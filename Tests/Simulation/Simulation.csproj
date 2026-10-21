@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/HongBallFight/Scripts/Data/FighterData.cs" />
+    <Compile Include="../../Assets/HongBallFight/Scripts/Battle/BattleSimulation.cs" />
+    <Compile Include="../../Assets/HongBallFight/Scripts/Battle/DuelMechanics.cs" />
+    <Compile Include="../../Assets/HongBallFight/Scripts/Battle/CombatImpact.cs" />
+    <Compile Include="../../Assets/HongBallFight/Scripts/Skills/SkillScript.cs" />
+    <Compile Include="../../Assets/HongBallFight/Scripts/Skills/SkillApi.cs" />
+    <Compile Include="../../Assets/HongBallFight/Scripts/Skills/SkillWorld.cs" />
+    <Compile Include="../../Assets/HongBallFight/Scripts/Skills/BlockProgram.cs" />
+    <Compile Include="../../Assets/HongBallFight/Scripts/Data/FighterImages.cs" />
+    <Compile Include="SimulationCheck.cs" />
+    <Compile Include="BlockChecks.cs" />
+    <Compile Include="DuelChecks.cs" />
+    <Compile Include="KnockbackChecks.cs" />
+    <Compile Include="ImpactChecks.cs" />
+  </ItemGroup>
+</Project>
