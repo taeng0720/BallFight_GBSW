@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
@@ -10,12 +11,13 @@ namespace HongBallFight
     {
         static string nextTab = "대전";
         static FighterData matchLeft, matchRight;
+        static string leftId, rightId;
 
         UiRegistry ui;
         FighterRepository repository;
         Text message;
         string tab = "대전";
-        string leftId, rightId;
+        float resetArmedUntil = -1;
         BallArena arena;
         readonly List<SpriteBank> selectionBanks = new List<SpriteBank>();
         static string SceneName => SceneManager.GetActiveScene().name;
@@ -29,13 +31,7 @@ namespace HongBallFight
         void Start()
         {
             Application.targetFrameRate = 60;
-            ui = FindFirstObjectByType<UiRegistry>();
-            if (ui && ui.LayoutVersion < SceneLayouts.Version)
-            {
-                Debug.LogWarning("씬의 UI 배치가 오래되어 새 배치로 실행합니다. 메뉴 Hong Ball Fight > 씬 UI 다시 배치로 씬을 갱신하세요.");
-                ui.gameObject.SetActive(false); Destroy(ui.gameObject); ui = null;
-            }
-            if (!ui) ui = SceneLayouts.Build(SceneName, SceneLayouts.EnsureCamera());
+            ui = PickLayout(SceneLayouts.IsPortrait);
             SceneLayouts.EnsureEventSystem();
             repository = FindFirstObjectByType<FighterRepository>();
             if (!repository) repository = new GameObject("Fighter Repository").AddComponent<FighterRepository>();
@@ -45,7 +41,7 @@ namespace HongBallFight
             {
                 arena = gameObject.AddComponent<BallArena>();
                 arena.Begin(ui, matchLeft ?? FighterData.Samples()[0], matchRight ?? FighterData.Samples()[1], () => Navigate("대전"));
-                repository.Refresh(); return;
+                return;
             }
             tab = Array.IndexOf(SceneLayouts.Tabs, nextTab) >= 0 ? nextTab : "대전";
             if (ui.Has("footer.message")) message = ui.Text("footer.message");
@@ -57,6 +53,33 @@ namespace HongBallFight
         void Update()
         {
             if (message && repository) message.text = repository.Busy ? "서버와 통신 중…" : repository.Message;
+            if (resetArmedUntil > 0 && Time.unscaledTime > resetArmedUntil && ui && ui.Has("stats.reset"))
+            {
+                resetArmedUntil = -1;
+                var reset = ui.Button("stats.reset"); Ui.SetText(reset, "기록 초기화"); Ui.SetButtonStyle(reset, false);
+            }
+            if (arena || !ui || reloading) return;
+            bool typing = EventSystem.current && EventSystem.current.currentSelectedGameObject && EventSystem.current.currentSelectedGameObject.GetComponent<InputField>();
+            if (ui.Portrait == SceneLayouts.IsPortrait || typing) { orientationChangedAt = -1; return; }
+            if (orientationChangedAt < 0) orientationChangedAt = Time.unscaledTime;
+            else if (Time.unscaledTime - orientationChangedAt > .4f) { reloading = true; nextTab = tab; SceneManager.LoadScene(SceneName); }
+        }
+        float orientationChangedAt = -1;
+        bool reloading;
+
+        static UiRegistry PickLayout(bool portrait)
+        {
+            UiRegistry chosen = null;
+            foreach (var layout in FindObjectsByType<UiRegistry>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                bool usable = layout.LayoutVersion >= SceneLayouts.Version && layout.Portrait == portrait && !chosen;
+                if (usable) { chosen = layout; continue; }
+                layout.gameObject.SetActive(false);
+                if (layout.LayoutVersion < SceneLayouts.Version) Destroy(layout.gameObject);
+            }
+            if (!chosen) chosen = SceneLayouts.Build(SceneName, SceneLayouts.EnsureCamera(), portrait);
+            chosen.gameObject.SetActive(true);
+            return chosen;
         }
         void OnDestroy() { if (repository) repository.Changed -= Repaint; foreach (var bank in selectionBanks) bank.Dispose(); }
 
@@ -71,7 +94,7 @@ namespace HongBallFight
         {
             foreach (string t in SceneLayouts.Tabs) { string next = t; ui.OnClick("nav." + t, () => Navigate(next)); }
             ui.OnClick("selection.start", BeginBattle);
-            ui.OnClick("stats.reset", () => { GameRecords.ClearMatches(); repository.SetMessage("대전 기록을 초기화했습니다."); Repaint(); });
+            ui.OnClick("stats.reset", ResetStats);
             ui.OnClick("idea.submit", SubmitIdea);
         }
 
@@ -197,6 +220,21 @@ namespace HongBallFight
                 SetText(row, "Result", match.winner == 1 ? match.leftName + " 승" : match.winner == 2 ? match.rightName + " 승" : "무승부");
                 SetText(row, "Time", $"{(int)match.seconds / 60:00}:{(int)match.seconds % 60:00} · {GameRecords.FormatTime(match.time)}");
             });
+        }
+
+        void ResetStats()
+        {
+            var button = ui.Button("stats.reset");
+            if (Time.unscaledTime > resetArmedUntil)
+            {
+                resetArmedUntil = Time.unscaledTime + 3;
+                Ui.SetText(button, "한 번 더 누르기"); Ui.SetButtonStyle(button, true);
+                repository.SetMessage("기록을 지우려면 3초 안에 한 번 더 누르세요.");
+                return;
+            }
+            resetArmedUntil = -1;
+            GameRecords.ClearMatches(); repository.SetMessage("대전 기록을 초기화했습니다.");
+            Repaint();
         }
 
         void SubmitIdea()

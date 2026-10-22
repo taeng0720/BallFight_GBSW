@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -12,7 +11,11 @@ namespace HongBallFight
         readonly BattleSimulation simulation;
         readonly SpriteBank playerBank, cpuBank;
         readonly RectTransform player, cpu;
-        readonly Image playerFace, cpuFace;
+        readonly Image playerImage, cpuImage, playerFace, cpuFace;
+        readonly Color playerColor, cpuColor;
+        readonly HashSet<int> activeEntities = new HashSet<int>();
+        readonly List<int> staleEntities = new List<int>();
+        readonly Dictionary<int, Image> entityImages = new Dictionary<int, Image>();
         readonly Text playerLabel, cpuLabel;
         readonly RectTransform playerAim, cpuAim;
         public bool ShowAim;
@@ -33,6 +36,8 @@ namespace HongBallFight
             playerAim = Aim("1번 방향"); cpuAim = Aim("2번 방향");
             player = Fighter("1번", simulation.Player, "1", out playerFace, out playerLabel);
             cpu = Fighter("2번", simulation.Cpu, simulation.Sandbox ? "샌드백" : "2", out cpuFace, out cpuLabel);
+            playerImage = player.GetComponent<Image>(); cpuImage = cpu.GetComponent<Image>();
+            playerColor = Ui.ParseColor(simulation.Player.Data.color); cpuColor = Ui.ParseColor(simulation.Cpu.Data.color);
             if (simulation.Sandbox) { cpuLabel.fontSize = 13; cpuLabel.color = Ui.TextColor; }
             effects = new ImpactEffects(content, simulation, sx, sy); effects.Collect();
             Render();
@@ -64,15 +69,14 @@ namespace HongBallFight
             aim.anchoredPosition = center + new Vector2(direction.x * sx, direction.y * sy) * BattleSimulation.Radius;
             aim.localRotation = Quaternion.Euler(0, 0, Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg);
         }
-        void RenderFighter(RectTransform visual, Image face, Text label, BattleSimulation.Fighter fighter, SpriteBank bank)
+        void RenderFighter(RectTransform visual, Image image, Image face, Text label, Color color, BattleSimulation.Fighter fighter, SpriteBank bank)
         {
             visual.gameObject.SetActive(!fighter.Defeated);
             if (fighter.Defeated) return;
             var state = simulation.World.State(fighter); string key = string.IsNullOrEmpty(state.Sprite) ? fighter.Data.portrait : state.Sprite;
             bool plainBall = string.IsNullOrEmpty(key) || key == "orb";
             bool showFace = plainBall && face.sprite;
-            var image = visual.GetComponent<Image>(); image.sprite = bank.Get(key, state); image.preserveAspect = true;
-            var color = Ui.ParseColor(fighter.Data.color);
+            image.sprite = bank.Get(key, state); image.preserveAspect = true;
             int number = fighter == simulation.Player ? 1 : 2;
             image.color = plainBall ? Color.Lerp(color, Color.white, effects.Flash(number) * .75f) : Color.white;
             face.gameObject.SetActive(showFace);
@@ -87,20 +91,26 @@ namespace HongBallFight
         {
             content.anchoredPosition = new Vector2(effects.Feedback.OffsetX, -effects.Feedback.OffsetY);
             duelVisuals.Render();
-            RenderFighter(player, playerFace, playerLabel, simulation.Player, playerBank); RenderFighter(cpu, cpuFace, cpuLabel, simulation.Cpu, cpuBank);
+            RenderFighter(player, playerImage, playerFace, playerLabel, playerColor, simulation.Player, playerBank); RenderFighter(cpu, cpuImage, cpuFace, cpuLabel, cpuColor, simulation.Cpu, cpuBank);
             RenderAim(playerAim, simulation.Player); RenderAim(cpuAim, simulation.Cpu);
-            var active = new HashSet<int>();
+            activeEntities.Clear();
             foreach (var entity in simulation.World.Entities)
             {
-                if (simulation.Ended || entity.Dead || entity.Owner.Defeated) continue; active.Add(entity.Id);
-                if (!entities.TryGetValue(entity.Id, out var visual)) { visual = Ui.Box(content, "Skill object", new Rect(0, 0, 24, 24), Color.white); visual.pivot = Vector2.one * .5f; entities[entity.Id] = visual; }
+                if (simulation.Ended || entity.Dead || entity.Owner.Defeated) continue; activeEntities.Add(entity.Id);
+                if (!entities.TryGetValue(entity.Id, out var visual))
+                {
+                    visual = Ui.Box(content, "Skill object", new Rect(0, 0, 24, 24), Color.white); visual.pivot = Vector2.one * .5f;
+                    entities[entity.Id] = visual; entityImages[entity.Id] = visual.GetComponent<Image>();
+                }
                 var bank = entity.Owner == simulation.Player ? playerBank : cpuBank;
-                var image = visual.GetComponent<Image>(); image.sprite = bank.Get(entity.Image, simulation.World.State(entity.Owner)); image.preserveAspect = true; image.color = new Color(entity.R, entity.G, entity.B, entity.A);
+                var image = entityImages[entity.Id]; image.sprite = bank.Get(entity.Image, simulation.World.State(entity.Owner)); image.preserveAspect = true; image.color = new Color(entity.R, entity.G, entity.B, entity.A);
                 visual.sizeDelta = new Vector2(entity.Size * sx, entity.Size * sy);
                 visual.anchoredPosition = new Vector2(entity.X * sx, -entity.Y * sy);
                 visual.localRotation = Quaternion.Euler(0, 0, -entity.Rotation);
             }
-            foreach (int id in entities.Keys.Where(id => !active.Contains(id)).ToArray()) { UnityEngine.Object.Destroy(entities[id].gameObject); entities.Remove(id); }
+            staleEntities.Clear();
+            foreach (int id in entities.Keys) if (!activeEntities.Contains(id)) staleEntities.Add(id);
+            foreach (int id in staleEntities) { UnityEngine.Object.Destroy(entities[id].gameObject); entities.Remove(id); entityImages.Remove(id); }
             effects.RenderTrails();
         }
         public void Dispose()

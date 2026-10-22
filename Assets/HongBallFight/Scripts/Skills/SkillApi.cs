@@ -71,7 +71,12 @@ namespace HongBallFight
             new SkillApi("Distance", "x1, y1, x2, y2", "두 위치 사이 거리", "Distance(Self.X, Self.Y, Enemy.X, Enemy.Y)", "수학"),
             new SkillApi("Log", "message", "테스트 콘솔에 출력", "Log(\"HP: \" + Self.HP)", "디버그")
         };
-        public static SkillApi Find(string name) => All.FirstOrDefault(a => a.Name == name);
+        static Dictionary<string, SkillApi> lookup;
+        public static SkillApi Find(string name)
+        {
+            if (lookup == null) { lookup = new Dictionary<string, SkillApi>(); foreach (var api in All) lookup[api.Name] = api; }
+            return name != null && lookup.TryGetValue(name, out var found) ? found : null;
+        }
         public static IEnumerable<string> Complete(string prefix, IEnumerable<string> locals = null)
         {
             return All.Select(a => a.Name).Concat(SkillScript.Properties).Concat(SkillScript.Events)

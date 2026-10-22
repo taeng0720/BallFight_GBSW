@@ -7,8 +7,8 @@ namespace HongBallFight
 {
     public static class SceneLayouts
     {
-        public const float Width = 1280, Height = 800;
-        public const int Version = 7;
+        public const float Width = 1280, Height = 800, PortraitWidth = 720, PortraitHeight = 1280;
+        public const int Version = 8;
         public static readonly string[] Tabs = { "대전", "승률", "아이디어" };
         static readonly string[] TabTitles = { "캐릭터 선택", "승률", "아이디어" };
         static UiRegistry ui;
@@ -29,20 +29,29 @@ namespace HongBallFight
             if (!Object.FindFirstObjectByType<EventSystem>()) new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
         }
 
-        public static UiRegistry Build(string sceneName, Camera camera)
+        public static bool IsPortrait => Screen.height > Screen.width;
+
+        public static UiRegistry Build(string sceneName, Camera camera, bool portrait)
         {
-            var canvasObject = new GameObject("Game UI", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(UiRegistry));
+            var size = portrait ? new Vector2(PortraitWidth, PortraitHeight) : new Vector2(Width, Height);
+            var canvasObject = new GameObject(portrait ? "Game UI (Portrait)" : "Game UI (Landscape)", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(UiRegistry));
             var canvas = canvasObject.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceCamera; canvas.worldCamera = camera; canvas.planeDistance = 10;
             var scaler = canvasObject.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(Width, Height); scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
-            ui = canvasObject.GetComponent<UiRegistry>(); ui.DesignSize = new Vector2(Width, Height); ui.LayoutVersion = Version;
+            scaler.referenceResolution = size; scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+            ui = canvasObject.GetComponent<UiRegistry>(); ui.DesignSize = size; ui.LayoutVersion = Version; ui.Portrait = portrait;
             Ui.Stretch(Ui.Box(canvasObject.transform, "Background", default, Ui.Background));
-            var root = Ui.Group(canvasObject.transform, "Application", new Rect(0, 0, Width, Height));
+            var root = Ui.Group(canvasObject.transform, "Application", new Rect(0, 0, size.x, size.y));
             root.anchorMin = root.anchorMax = root.pivot = new Vector2(.5f, .5f); root.anchoredPosition = Vector2.zero;
             ui.Root = root;
 
-            if (sceneName == "Arena") Arena(root);
+            if (sceneName == "Arena") { if (portrait) ArenaPortrait(root); else Arena(root); }
+            else if (portrait)
+            {
+                TopBarPortrait(root);
+                SelectionPortrait(PanelPortrait(Page(root, "대전", "Selection"))); StatsPortrait(PanelPortrait(Page(root, "승률", "Stats"))); IdeasPortrait(PanelPortrait(Page(root, "아이디어", "Ideas")));
+                Reg("footer.message", Ui.Label(root, "", new Rect(32, 1236, 656, 36), 14, Ui.Muted), "Footer Message");
+            }
             else
             {
                 TopBar(root);
@@ -59,6 +68,7 @@ namespace HongBallFight
         }
         static RectTransform Page(RectTransform root, string tab, string name) => Reg("page." + tab, Ui.Stretch(Ui.Group(root, name, default)));
         static RectTransform Panel(RectTransform page) => Ui.Group(page, "Panel", new Rect(32, 100, 1216, 628));
+        static RectTransform PanelPortrait(RectTransform page) => Ui.Group(page, "Panel", new Rect(32, 184, 656, 1040));
         static RectTransform Card(Transform parent, string name, Rect rect) => Ui.Frame(parent, name, rect, Color.white, 2, Ui.Border);
         static Text Heading(Transform parent, string value, Rect rect, int size = 20) => Ui.Title(parent, value, rect, size);
         static Text Centered(Text text) { text.alignment = TextAnchor.MiddleCenter; return text; }
@@ -167,6 +177,120 @@ namespace HongBallFight
             Template(row);
         }
 
+        static void TopBarPortrait(RectTransform root)
+        {
+            var bar = Reg("topbar", Ui.Group(root, "Top Bar", new Rect(0, 0, PortraitWidth, 170)));
+            Ui.Title(bar, "볼 파이트", new Rect(32, 26, 400, 52), 34).name = "Title";
+            for (int i = 0; i < Tabs.Length; i++) Reg("nav." + Tabs[i], Ui.Button(bar, TabTitles[i], new Rect(32 + i * 224, 94, 208, 54)));
+            Ui.Box(bar, "Rule", new Rect(32, 164, 656, 3), Ui.Ink);
+        }
+
+        static void SelectionPortrait(RectTransform panel)
+        {
+            Ui.Title(panel, "캐릭터 선택", new Rect(0, 0, 656, 44), 30).name = "Title";
+            Ui.Label(panel, "1번과 2번을 고르고 대전을 시작하세요.", new Rect(0, 46, 656, 26), 15, Ui.Muted).name = "Subtitle";
+            var matchup = Ui.Frame(panel, "Matchup", new Rect(0, 86, 656, 300), Color.white, 3);
+            Heading(matchup, "매치업", new Rect(20, 12, 300, 36), 22).name = "Title";
+            MatchSlotCompact(matchup, "selection.slot1", "1번", new Rect(20, 56, 278, 150));
+            Centered(Ui.Title(matchup, "VS", new Rect(298, 56, 60, 150), 24)).name = "VS";
+            MatchSlotCompact(matchup, "selection.slot2", "2번", new Rect(358, 56, 278, 150));
+            Reg("selection.start", Ui.Button(matchup, "대전 시작", new Rect(20, 222, 616, 60), null, true));
+
+            var list = Reg("selection.list", Ui.Scroll(panel, "Fighter List", new Rect(0, 404, 668, 636)));
+            Reg("selection.empty", Ui.Label(panel, "공개된 캐릭터가 없습니다.", new Rect(0, 414, 656, 40)), "Empty").gameObject.SetActive(false);
+            var template = Reg("selection.card", Ui.Group(list, "Fighter Card (Template)", new Rect(3, 3, 644, 150)));
+            Ui.Box(template, "Outline", new Rect(-3, -3, 650, 156), Ui.Ink);
+            var body = Card(template, "Body", new Rect(0, 0, 644, 150));
+            Ui.Portrait(body, "Avatar", new Rect(18, 18, 64, 64), Ui.Muted);
+            Heading(body, "이름", new Rect(98, 14, 520, 34), 24).name = "Name";
+            Ui.Label(body, "설명", new Rect(98, 48, 528, 40), 15, Ui.Muted).name = "Skill";
+            Ui.Label(body, "능력치", new Rect(18, 96, 400, 40), 14).name = "Stats";
+            Ui.Button(body, "1번으로", new Rect(424, 94, 100, 44)).name = "Pick1";
+            Ui.Button(body, "2번으로", new Rect(532, 94, 100, 44)).name = "Pick2";
+            Template(template);
+        }
+        static void MatchSlotCompact(RectTransform parent, string key, string tag, Rect rect)
+        {
+            var slot = Reg(key, Card(parent, tag + " 슬롯", rect));
+            float w = rect.width;
+            Ui.Portrait(slot, "Avatar", new Rect((w - 64) / 2, 14, 64, 64), Ui.Muted);
+            Centered(Ui.Label(slot, tag, new Rect(0, 80, w, 20), 12, Ui.Muted, true)).name = "Tag";
+            Centered(Heading(slot, "-", new Rect(0, 98, w, 30), 20)).name = "Name";
+            Centered(Ui.Label(slot, "", new Rect(0, 126, w, 20), 12, Ui.Muted)).name = "Stats";
+        }
+
+        static void StatsPortrait(RectTransform panel)
+        {
+            Ui.Title(panel, "승률", new Rect(0, 0, 400, 44), 30).name = "Title";
+            Reg("stats.summary", Ui.Label(panel, "", new Rect(0, 46, 656, 26), 14, Ui.Muted), "Summary");
+            Reg("stats.reset", Ui.Button(panel, "기록 초기화", new Rect(516, 0, 140, 44)));
+            Reg("stats.empty", Ui.Label(panel, "아직 기록이 없습니다.\n대전을 하면 결과가 자동으로 기록됩니다.", new Rect(0, 100, 656, 60), 17, Ui.Muted), "Empty");
+
+            var content = Reg("stats.content", Ui.Stretch(Ui.Group(panel, "Records", default)));
+            Heading(content, "캐릭터별 승률", new Rect(0, 86, 656, 32)).name = "Standings Title";
+            var standings = Reg("stats.standings", Ui.Scroll(content, "Standings", new Rect(0, 124, 668, 360)));
+            var row = Reg("stats.standingRow", Card(standings, "Standing Row (Template)", new Rect(0, 0, 644, 76)));
+            Centered(Ui.Title(row, "1", new Rect(8, 0, 40, 76), 20)).name = "Rank";
+            Ui.Portrait(row, "Avatar", new Rect(52, 14, 48, 48), Ui.Muted);
+            Heading(row, "이름", new Rect(114, 10, 300, 28), 18).name = "Name";
+            Ui.Label(row, "0전 0승 0패", new Rect(114, 40, 300, 24), 14, Ui.Muted).name = "Record";
+            Right(Ui.Title(row, "0%", new Rect(450, 10, 176, 28), 22)).name = "Rate";
+            Ui.Box(row, "Track", new Rect(450, 48, 176, 10), Ui.Soft);
+            Ui.Box(row, "Fill", new Rect(450, 48, 176, 10), Ui.Ink);
+            Template(row);
+
+            Heading(content, "상대 전적", new Rect(0, 500, 656, 32)).name = "Rivalry Title";
+            var rivalries = Reg("stats.rivalries", Ui.Scroll(content, "Rivalries", new Rect(0, 538, 668, 200)));
+            var pair = Reg("stats.rivalryRow", Card(rivalries, "Rivalry Row (Template)", new Rect(0, 0, 644, 56)));
+            Heading(pair, "A", new Rect(16, 0, 230, 56), 16).name = "A";
+            Centered(Ui.Title(pair, "0 : 0", new Rect(246, 0, 152, 56), 22)).name = "Score";
+            Right(Heading(pair, "B", new Rect(398, 0, 230, 56), 16)).name = "B";
+            Centered(Ui.Label(pair, "", new Rect(246, 38, 152, 16), 11, Ui.Muted)).name = "Draws";
+            Template(pair);
+
+            Heading(content, "최근 경기", new Rect(0, 754, 656, 32)).name = "Recent Title";
+            var recent = Reg("stats.recent", Ui.Scroll(content, "Recent Matches", new Rect(0, 792, 668, 248)));
+            var match = Reg("stats.matchRow", Ui.Box(recent, "Match Row (Template)", new Rect(0, 0, 644, 48), Ui.Soft));
+            Ui.Label(match, "A vs B", new Rect(16, 0, 330, 48), 15).name = "Players";
+            Heading(match, "결과", new Rect(346, 0, 150, 48), 15).name = "Result";
+            Right(Ui.Label(match, "", new Rect(496, 0, 132, 48), 12, Ui.Muted)).name = "Time";
+            Template(match);
+        }
+
+        static void IdeasPortrait(RectTransform panel)
+        {
+            Ui.Title(panel, "아이디어", new Rect(0, 0, 656, 44), 30).name = "Title";
+            Ui.Label(panel, "새 캐릭터나 스킬 아이디어를 남겨 주세요.", new Rect(0, 46, 656, 26), 15, Ui.Muted).name = "Subtitle";
+            Reg("idea.name", Ui.Input(panel, "캐릭터 이름", new Rect(0, 86, 656, 72)));
+            Reg("idea.author", Ui.Input(panel, "작성자 (선택)", new Rect(0, 168, 656, 72)));
+            Reg("idea.description", Ui.Input(panel, "스킬 · 특징 설명", new Rect(0, 250, 656, 150), multiline: true));
+            Reg("idea.submit", Ui.Button(panel, "아이디어 제출", new Rect(0, 412, 656, 58), null, true));
+
+            Ui.Box(panel, "Divider", new Rect(0, 488, 656, 2), Ui.Border);
+            Heading(panel, "올라온 아이디어", new Rect(0, 500, 400, 40), 22).name = "List Title";
+            Reg("idea.count", Right(Ui.Label(panel, "", new Rect(400, 500, 256, 40), 14, Ui.Muted)), "Count");
+            var list = Reg("idea.list", Ui.Scroll(panel, "Idea List", new Rect(0, 548, 668, 492)));
+            Reg("idea.empty", Ui.Label(panel, "아직 아이디어가 없습니다.\n첫 아이디어를 남겨 보세요!", new Rect(0, 556, 656, 60), 16, Ui.Muted), "Empty");
+            var row = Reg("idea.row", Card(list, "Idea Row (Template)", new Rect(0, 0, 644, 126)));
+            Heading(row, "이름", new Rect(18, 10, 608, 30), 18).name = "Name";
+            var description = Ui.Label(row, "설명", new Rect(18, 44, 608, 52), 15); description.name = "Description"; description.alignment = TextAnchor.UpperLeft;
+            Ui.Label(row, "", new Rect(18, 98, 608, 22), 13, Ui.Muted).name = "Meta";
+            Template(row);
+        }
+
+        static void ArenaPortrait(RectTransform root)
+        {
+            Ui.Box(root, "Arena Border", new Rect(54, 180, 612, 612), Ui.Ink);
+            var stage = Reg("arena.stage", Ui.Box(root, "Stage", new Rect(60, 186, 600, 600), Color.white));
+            stage.gameObject.AddComponent<RectMask2D>();
+            Reg("arena.countdown", Centered(Ui.Label(root, "3", new Rect(260, 426, 200, 120), 96, Ui.Ink, true)), "Countdown");
+            Hud(root, "arena.left", "1번 정보", new Rect(54, 812, 298, 116), false);
+            Hud(root, "arena.right", "2번 정보", new Rect(368, 812, 298, 116), true);
+            Reg("arena.back", Ui.Button(root, "← 캐릭터 선택", new Rect(54, 980, 298, 64)), "Back");
+            Reg("arena.restart", Ui.Button(root, "다시하기", new Rect(368, 980, 298, 64)), "Restart");
+            Result(root, new Rect(60, 186, 600, 600));
+        }
+
         static void Arena(RectTransform root)
         {
             Reg("arena.back", Ui.Button(root, "← 캐릭터 선택", new Rect(32, 20, 180, 48)), "Back");
@@ -178,7 +302,11 @@ namespace HongBallFight
             Hud(root, "arena.left", "1번 정보", new Rect(334, 636, 298, 116), false);
             Hud(root, "arena.right", "2번 정보", new Rect(648, 636, 298, 116), true);
 
-            var result = Reg("arena.result", Ui.Group(root, "Result", new Rect(340, 20, 600, 600)));
+            Result(root, new Rect(340, 20, 600, 600));
+        }
+        static void Result(RectTransform root, Rect rect)
+        {
+            var result = Reg("arena.result", Ui.Group(root, "Result", rect));
             Ui.Box(result, "Dim", new Rect(0, 0, 600, 600), new Color(1, 1, 1, .82f)).GetComponent<Image>().raycastTarget = true;
             Reg("arena.resultTitle", Centered(Ui.Label(result, "이름", new Rect(0, 170, 600, 120), 76, Ui.Ink, true)), "Winner");
             Reg("arena.resultLabel", Centered(Ui.Label(result, "승리!", new Rect(0, 290, 600, 70), 44, Ui.Ink, true)), "Label");

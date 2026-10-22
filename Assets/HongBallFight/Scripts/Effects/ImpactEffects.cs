@@ -31,6 +31,9 @@ namespace HongBallFight
         readonly List<Burst> bursts = new List<Burst>();
         readonly float[] pulse = new float[2], strength = new float[2];
         readonly RectTransform[][] trails = new RectTransform[2][];
+        readonly Image[][] trailImages = new Image[2][];
+        readonly Color[] tints = new Color[2];
+        readonly List<CombatImpact> drained = new List<CombatImpact>();
         readonly ImpactAudio audio;
         int serial;
         public readonly ImpactFeedback Feedback = new ImpactFeedback();
@@ -56,11 +59,13 @@ namespace HongBallFight
             audio = layer.gameObject.AddComponent<ImpactAudio>();
             for (int f = 0; f < 2; f++)
             {
-                trails[f] = new RectTransform[3];
+                trails[f] = new RectTransform[3]; trailImages[f] = new Image[3];
+                tints[f] = Ui.ParseColor((f == 0 ? simulation.Player : simulation.Cpu).Data.color);
                 for (int i = 0; i < 3; i++)
                 {
-                    var trail = Ui.Box(parent, "이동 잔상", new Rect(0, 0, 1, 1), Color.clear); trail.GetComponent<Image>().sprite = Ui.Circle;
-                    trail.pivot = Vector2.one * .5f; trail.SetAsFirstSibling(); trails[f][i] = trail;
+                    var trail = Ui.Box(parent, "이동 잔상", new Rect(0, 0, 1, 1), Color.clear);
+                    var image = trail.GetComponent<Image>(); image.sprite = Ui.Circle;
+                    trail.pivot = Vector2.one * .5f; trail.SetAsFirstSibling(); trails[f][i] = trail; trailImages[f][i] = image;
                 }
             }
         }
@@ -72,7 +77,8 @@ namespace HongBallFight
         }
         public void Collect()
         {
-            foreach (var impact in simulation.DrainImpacts())
+            simulation.DrainImpacts(drained);
+            foreach (var impact in drained)
             {
                 Feedback.Accept(impact); audio.Play(impact);
                 if (impact.Kind == ImpactKind.Swing) continue;
@@ -94,7 +100,7 @@ namespace HongBallFight
             if (bursts.Count >= 28) { UnityEngine.Object.Destroy(bursts[0].Root.gameObject); bursts.RemoveAt(0); }
             bool defeat = impact.Kind == ImpactKind.Defeat, dot = impact.Kind == ImpactKind.Dot, promotion = impact.Kind == ImpactKind.Promotion, whip = impact.Kind == ImpactKind.Whip;
             var fighter = impact.Number == 1 ? simulation.Player : simulation.Cpu;
-            ColorUtility.TryParseHtmlString(fighter.Data.color, out var tint);
+            var tint = tints[impact.Number - 1];
             if (promotion) tint = new Color32(192, 158, 72, 255);
             var burst = new Burst
             {
@@ -153,7 +159,7 @@ namespace HongBallFight
                 var fighter = f == 0 ? simulation.Player : simulation.Cpu;
                 bool launched = fighter.KnockbackTime > 0;
                 var direction = launched ? new Vector2(fighter.KnockbackX, fighter.KnockbackY).normalized : new Vector2(fighter.VelocityX, fighter.VelocityY).normalized;
-                ColorUtility.TryParseHtmlString(fighter.Data.color, out var tint);
+                var tint = tints[f];
                 for (int i = 0; i < 3; i++)
                 {
                     var trail = trails[f][i]; bool visible = !simulation.Ended && !fighter.Defeated && (fighter.KnockbackTime > 0 || fighter.MoveSpeed >= 280);
@@ -161,10 +167,10 @@ namespace HongBallFight
                     float size = (53 - i * 9) * BattleSimulation.Radius / 31; trail.sizeDelta = new Vector2(size * sx, size * sy);
                     float spacing = launched ? 30 : 13;
                     trail.anchoredPosition = new Vector2((fighter.X - direction.x * (i + 1) * spacing) * sx, -(fighter.Y - direction.y * (i + 1) * spacing) * sy);
-                    trail.GetComponent<Image>().color = new Color(tint.r, tint.g, tint.b, (launched ? .28f : .07f) / (i + 1));
+                    trailImages[f][i].color = new Color(tint.r, tint.g, tint.b, (launched ? .28f : .07f) / (i + 1));
                 }
             }
-            layer.SetAsLastSibling();
+            if (layer.GetSiblingIndex() != layer.parent.childCount - 1) layer.SetAsLastSibling();
         }
         public void Dispose() { if (layer) UnityEngine.Object.Destroy(layer.gameObject); }
     }

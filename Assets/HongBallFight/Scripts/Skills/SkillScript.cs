@@ -59,6 +59,7 @@ namespace HongBallFight
                 foreach (var name in program.globals) state[name] = 0d;
                 foreach (var node in program.initializers) node.Run(this);
             }
+            public bool Has(string name) => program.Functions.ContainsKey(name);
             public void Invoke(string name)
             {
                 if (!program.Functions.ContainsKey(name)) return;
@@ -136,11 +137,12 @@ namespace HongBallFight
             readonly Node value;
             readonly string operation;
             readonly bool declare;
-            public Assignment(Token token, Node value, string operation, bool declare) : base(token) { this.value = value; this.operation = operation; this.declare = declare; }
+            readonly string compound;
+            public Assignment(Token token, Node value, string operation, bool declare) : base(token) { this.value = value; this.operation = operation; this.declare = declare; compound = operation == "=" ? null : operation.Substring(0, 1); }
             public override object Run(Runtime runtime)
             {
                 object next = value.Run(runtime);
-                if (operation != "=") next = Binary.Calculate(operation.Substring(0, 1), runtime.Read(Token), next);
+                if (compound != null) next = Binary.Calculate(compound, runtime.Read(Token), next);
                 runtime.Write(Token, next, declare); return next;
             }
         }
@@ -162,8 +164,8 @@ namespace HongBallFight
                 switch (op)
                 {
                     case "+": return x + y; case "-": return x - y; case "*": return x * y;
-                    case "/": if (y == 0) throw new Exception("0으로 나눌 수 없습니다."); return x / y;
-                    case "%": if (y == 0) throw new Exception("0으로 나눌 수 없습니다."); return x % y;
+                    case "/": return y == 0 ? 0d : x / y;
+                    case "%": return y == 0 ? 0d : x % y;
                     case "<": return x < y; case ">": return x > y; case "<=": return x <= y; case ">=": return x >= y;
                     default: throw new Exception("알 수 없는 연산자 " + op);
                 }
@@ -193,7 +195,12 @@ namespace HongBallFight
         {
             public readonly List<Node> Args;
             public CallNode(Token token, List<Node> args) : base(token) { Args = args; }
-            public override object Run(Runtime runtime) => runtime.Call(Token.Text, Args.Select(a => a.Run(runtime)).ToArray(), Token);
+            public override object Run(Runtime runtime)
+            {
+                var values = new object[Args.Count];
+                for (int i = 0; i < values.Length; i++) values[i] = Args[i].Run(runtime);
+                return runtime.Call(Token.Text, values, Token);
+            }
         }
         sealed class Block : Node
         {

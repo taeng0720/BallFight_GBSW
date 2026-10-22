@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,7 +12,11 @@ namespace HongBallFight
             public RectTransform Aura;
             public Text Status;
             public RectTransform[] Noodles;
+            public int Rank = -1;
+            public bool Slowed;
         }
+        readonly HashSet<int> activePickups = new HashSet<int>();
+        readonly List<int> stalePickups = new List<int>();
         readonly RectTransform parent;
         readonly BattleSimulation simulation;
         readonly float sx, sy;
@@ -76,7 +79,12 @@ namespace HongBallFight
                     view.Aura.gameObject.SetActive(fighter.Hp > 0 && !fighter.Defeated);
                     view.Aura.anchoredPosition = new Vector2((fighter.X - BattleSimulation.AuraRadius) * sx, -(fighter.Y - BattleSimulation.AuraRadius) * sy);
                 }
-                view.Status.text = (fighter.Data.skill == "army_aura" ? fighter.RankName : "") + (fighter.SlowFactor < 1 ? " 느려짐" : "");
+                bool slowed = fighter.SlowFactor < 1;
+                if (view.Rank != fighter.Rank || view.Slowed != slowed)
+                {
+                    view.Rank = fighter.Rank; view.Slowed = slowed;
+                    view.Status.text = (fighter.Data.skill == "army_aura" ? fighter.RankName : "") + (slowed ? " 느려짐" : "");
+                }
                 view.Status.gameObject.SetActive(!fighter.Defeated);
                 view.Status.rectTransform.anchoredPosition = new Vector2((fighter.X - 80) * sx, -(fighter.Y + BattleSimulation.Radius + 8) * sy);
                 if (view.Noodles == null) continue;
@@ -89,11 +97,11 @@ namespace HongBallFight
                     line.localRotation = Quaternion.Euler(0, 0, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
                 }
             }
-            var active = new HashSet<int>();
+            activePickups.Clear();
             foreach (var pickup in simulation.RankPickups)
             {
                 if (simulation.Ended || pickup.Owner.Defeated) continue;
-                active.Add(pickup.Id);
+                activePickups.Add(pickup.Id);
                 if (!pickups.TryGetValue(pickup.Id, out var visual))
                 {
                     float w = BattleSimulation.PickupWidth, h = BattleSimulation.PickupHeight;
@@ -116,7 +124,9 @@ namespace HongBallFight
                 }
                 visual.anchoredPosition = new Vector2((pickup.X - BattleSimulation.PickupWidth / 2) * sx, -(pickup.Y - BattleSimulation.PickupHeight / 2) * sy);
             }
-            foreach (int id in pickups.Keys.Where(id => !active.Contains(id)).ToArray()) { UnityEngine.Object.Destroy(pickups[id].gameObject); pickups.Remove(id); }
+            stalePickups.Clear();
+            foreach (int id in pickups.Keys) if (!activePickups.Contains(id)) stalePickups.Add(id);
+            foreach (int id in stalePickups) { UnityEngine.Object.Destroy(pickups[id].gameObject); pickups.Remove(id); }
         }
     }
 }

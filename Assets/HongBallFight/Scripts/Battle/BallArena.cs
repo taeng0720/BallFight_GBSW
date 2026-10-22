@@ -11,6 +11,7 @@ namespace HongBallFight
         {
             public Text Hp;
             public Gauge Health, Skill;
+            public int ShownHp = -1;
         }
         sealed class Gauge
         {
@@ -32,6 +33,7 @@ namespace HongBallFight
             }
         }
 
+        static readonly string[] CountdownDigits = { "0", "1", "2", "3" };
         const float CountdownSeconds = 3, StartBannerSeconds = .7f, Step = 1f / 120, GlyphOffset = .07f;
         ArenaStage stage;
         Text countdown;
@@ -70,7 +72,7 @@ namespace HongBallFight
         }
         void ShowCountdown(string value, float scale, float alpha)
         {
-            countdown.text = value;
+            if (countdown.text != value) countdown.text = value;
             countdown.transform.localScale = Vector3.one * scale;
             var color = countdown.color; color.a = alpha; countdown.color = color;
         }
@@ -99,7 +101,7 @@ namespace HongBallFight
                 if (countdownLeft > 0)
                 {
                     float t = countdownLeft - Mathf.Floor(countdownLeft);
-                    ShowCountdown(Mathf.CeilToInt(countdownLeft).ToString(), Mathf.Lerp(1, 1.7f, t * t), Mathf.Clamp01(.35f + t * 2));
+                    ShowCountdown(CountdownDigits[Mathf.Clamp(Mathf.CeilToInt(countdownLeft), 1, 3)], Mathf.Lerp(1, 1.7f, t * t), Mathf.Clamp01(.35f + t * 2));
                 }
                 else
                 {
@@ -148,7 +150,8 @@ namespace HongBallFight
         {
             hud.Health.Set(fighter.Defeated ? 0 : fighter.Hp / fighter.Data.hp);
             hud.Skill.Set(SkillCharge(fighter));
-            hud.Hp.text = Mathf.CeilToInt(fighter.Hp) + " / " + fighter.Data.hp;
+            int hp = Mathf.CeilToInt(fighter.Hp);
+            if (hp != hud.ShownHp) { hud.ShownHp = hp; hud.Hp.text = hp + " / " + fighter.Data.hp; }
         }
         void RefreshHud()
         {

@@ -2,16 +2,21 @@
 <html lang="ko">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" href="data:,">
     <title>볼 파이트</title>
     <style>
-      html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #ffffff; }
-      #unity-canvas { display: block; width: 100vw; height: 100vh; background: #ffffff; outline: none; }
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #ffffff; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+      #unity-canvas { display: block; width: 100vw; height: 100vh; height: 100dvh; background: #ffffff; outline: none; touch-action: none; }
       #loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #ffffff; color: #14161a; font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; transition: opacity .25s; }
-      #loading h1 { margin: 0 0 28px; font-size: 56px; font-weight: 800; letter-spacing: -1px; }
-      #bar { width: 320px; height: 14px; border: 3px solid #14161a; box-sizing: border-box; }
+      #loading h1 { margin: 0 0 28px; font-size: clamp(40px, 12vw, 56px); font-weight: 800; letter-spacing: -1px; }
+      #bar { width: min(320px, 76vw); height: 14px; border: 3px solid #14161a; box-sizing: border-box; }
       #fill { width: 0; height: 100%; background: #14161a; transition: width .15s; }
-      #status { margin-top: 14px; font-size: 15px; color: #767c86; }
+      #status { margin-top: 14px; font-size: 15px; color: #767c86; text-align: center; line-height: 1.6; }
+      #retry { display: none; margin-top: 18px; padding: 10px 28px; font: 700 16px "Malgun Gothic", sans-serif; color: #ffffff; background: #14161a; border: 3px solid #14161a; cursor: pointer; }
       #loading.done { opacity: 0; pointer-events: none; }
     </style>
   </head>
@@ -21,12 +26,39 @@
       <h1>볼 파이트</h1>
       <div id="bar"><div id="fill"></div></div>
       <div id="status">불러오는 중… 0%</div>
+      <button id="retry" type="button">다시 시도</button>
     </div>
     <script src="Build/{{{ LOADER_FILENAME }}}"></script>
     <script>
       var loading = document.getElementById("loading");
       var fill = document.getElementById("fill");
       var statusText = document.getElementById("status");
+      var retry = document.getElementById("retry");
+      var started = false;
+      var lastProgress = 0;
+      var lastChange = Date.now();
+
+      function showRetry(message) {
+        statusText.innerHTML = message;
+        retry.style.display = "inline-block";
+      }
+      retry.onclick = function () {
+        retry.disabled = true;
+        statusText.textContent = "캐시를 비우고 다시 불러오는 중…";
+        var reload = function () { location.reload(); };
+        try {
+          var request = indexedDB.deleteDatabase("UnityCache");
+          request.onsuccess = request.onerror = request.onblocked = reload;
+          setTimeout(reload, 1500);
+        } catch (error) { reload(); }
+      };
+      setInterval(function () {
+        if (started || retry.style.display === "inline-block") return;
+        if (Date.now() - lastChange > 25000) {
+          showRetry(lastProgress >= 0.9 ? "게임을 준비하는 데 시간이 오래 걸리고 있어요.<br>계속 멈춰 있으면 아래 버튼을 눌러 주세요." : "네트워크가 느리거나 연결이 끊긴 것 같아요.<br>아래 버튼을 눌러 다시 시도해 주세요.");
+        }
+      }, 1000);
+
       createUnityInstance(document.getElementById("unity-canvas"), {
         arguments: [],
         dataUrl: "Build/{{{ DATA_FILENAME }}}",
@@ -43,16 +75,23 @@
         streamingAssetsUrl: "StreamingAssets",
         companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
         productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
-        productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}}
+        productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+        devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+        showBanner: function (message, type) {
+          if (type === "error" && !started) showRetry("게임을 불러오지 못했어요.<br>아래 버튼을 눌러 다시 시도해 주세요.");
+        }
       }, function (progress) {
+        if (progress !== lastProgress) { lastProgress = progress; lastChange = Date.now(); }
         var percent = Math.round(progress * 100);
         fill.style.width = percent + "%";
-        statusText.textContent = "불러오는 중… " + percent + "%";
+        if (retry.style.display !== "inline-block")
+          statusText.textContent = progress >= 0.9 ? "게임 준비 중… " + percent + "%" : "불러오는 중… " + percent + "%";
       }).then(function () {
+        started = true;
         loading.className = "done";
         setTimeout(function () { loading.style.display = "none"; }, 300);
-      }).catch(function (message) {
-        statusText.textContent = "게임을 불러오지 못했습니다: " + message;
+      }).catch(function () {
+        showRetry("게임을 불러오지 못했어요.<br>아래 버튼을 눌러 다시 시도해 주세요.");
       });
     </script>
   </body>

@@ -76,12 +76,19 @@ namespace HongBallFight
             Entity Find(object[] args, bool includeDead = false)
             {
                 int id = (int)N(args, 0, 0, int.MaxValue);
-                return world.Entities.FirstOrDefault(e => e.Id == id && e.Owner == Self && (!e.Dead || includeDead));
+                foreach (var e in world.Entities) if (e.Id == id && e.Owner == Self && (!e.Dead || includeDead)) return e;
+                return null;
             }
             float Aim() => (float)(Math.Atan2(Enemy.Y - Self.Y, Enemy.X - Self.X) * 180 / Math.PI);
+            int AliveCount()
+            {
+                int count = 0;
+                foreach (var e in world.Entities) if (e.Owner == Self && !e.Dead) count++;
+                return count;
+            }
             Entity Spawn(string image, float x, float y, float size, float life)
             {
-                if (Spawns++ >= 64 || world.Entities.Count(e => e.Owner == Self && !e.Dead) >= 128) return null;
+                if (Spawns++ >= 64 || AliveCount() >= 128) return null;
                 var entity = new Entity { Id = ++world.nextId, Owner = Self, Image = image, X = x, Y = y, Size = size, Life = life };
                 world.Entities.Add(entity); return entity;
             }
@@ -139,15 +146,16 @@ namespace HongBallFight
                         return (double)id;
                     }
                     case "LaunchOrbitals":
-                        foreach (var entity in world.Entities.Where(e => e.Owner == Self && e.Orbital && !e.Dead))
+                        foreach (var entity in world.Entities)
                         {
+                            if (entity.Owner != Self || !entity.Orbital || entity.Dead) continue;
                             double angle = Math.Atan2(Enemy.Y - entity.Y, Enemy.X - entity.X);
                             entity.Orbital = false; entity.Piercing = 0;
                             entity.VelocityX = (float)Math.Cos(angle) * N(args, 0, 0, 1000); entity.VelocityY = (float)Math.Sin(angle) * N(args, 0, 0, 1000);
                         }
                         return 0d;
-                    case "DestroyAll": foreach (var entity in world.Entities.Where(e => e.Owner == Self)) entity.Dead = true; return 0d;
-                    case "GetCount": return (double)world.Entities.Count(e => e.Owner == Self && !e.Dead);
+                    case "DestroyAll": foreach (var entity in world.Entities) if (entity.Owner == Self) entity.Dead = true; return 0d;
+                    case "GetCount": return (double)AliveCount();
                     case "Exists": return Find(args) != null;
                     case "Destroy": { var entity = Find(args); if (entity != null) entity.Dead = true; return 0d; }
                     case "SetVelocity": { var e = Find(args); if (e != null) { e.Orbital = false; e.VelocityX = N(args, 1, -1000, 1000); e.VelocityY = N(args, 2, -1000, 1000); } return 0d; }
@@ -173,7 +181,7 @@ namespace HongBallFight
                         return 0d;
                     }
                     case "Damage": world.simulation.DealDamage(Enemy, N(args, 0, 0, 150)); return 0d;
-                    case "Heal": Self.Hp = Math.Min(Self.Data.hp, Self.Hp + N(args, 0, 0, 150)); return 0d;
+                    case "Heal": if (Self.Hp > 0) Self.Hp = Math.Min(Self.Data.hp, Self.Hp + N(args, 0, 0, 150)); return 0d;
                     case "Shield": Self.Shield = N(args, 0, 0, 150); return 0d;
                     case "Dash": Self.MoveSpeed = N(args, 0, 100, 700); Self.SetVelocity(Enemy.X - Self.X, Enemy.Y - Self.Y); return 0d;
                     case "SetSpeed": Self.MoveSpeed = N(args, 0, 100, 700); Self.SetVelocity(Self.VelocityX, Self.VelocityY); return 0d;
@@ -205,10 +213,15 @@ namespace HongBallFight
                     {
                         var image = Image(S(args, 0)); float cx = N(args, 1), cy = N(args, 2), w = N(args, 3, 0, 256), h = name == "DrawRect" ? N(args, 4, 0, 256) : w;
                         int color = name == "DrawRect" ? 5 : 4;
-                        for (int y = 0; y < image.Height; y++) for (int x = 0; x < image.Width; x++)
+                        bool rect = name == "DrawRect";
+                        float r = N(args, color, 0, 1), g = N(args, color + 1, 0, 1), b = N(args, color + 2, 0, 1), a = N(args, color + 3, 0, 1);
+                        int x0 = Math.Max(0, (int)Math.Floor(rect ? cx : cx - w)), x1 = Math.Min(image.Width, (int)Math.Ceiling(cx + w) + 1);
+                        int y0 = Math.Max(0, (int)Math.Floor(rect ? cy : cy - h)), y1 = Math.Min(image.Height, (int)Math.Ceiling(cy + h) + 1);
+                        for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++)
                         {
-                            bool inside = name == "DrawRect" ? x >= cx && x < cx + w && y >= cy && y < cy + h : (x - cx) * (x - cx) + (y - cy) * (y - cy) <= w * w;
-                            if (inside) Pixel(image, x, y, N(args, color, 0, 1), N(args, color + 1, 0, 1), N(args, color + 2, 0, 1), N(args, color + 3, 0, 1));
+                            bool inside = rect ? x >= cx && x < cx + w && y >= cy && y < cy + h : (x - cx) * (x - cx) + (y - cy) * (y - cy) <= w * w;
+                            if (inside) Pixel(image, x, y, r, g, b, a);
+                            else if (++PixelWrites > 32768) throw new Exception("한 프레임의 이미지 쓰기 한도 초과");
                         }
                         image.Revision++; return 0d;
                     }
@@ -216,7 +229,7 @@ namespace HongBallFight
                     case "Mathf.Sin": return Math.Sin(N(args, 0)); case "Mathf.Cos": return Math.Cos(N(args, 0));
                     case "Mathf.Abs": return (double)Math.Abs(N(args, 0)); case "Mathf.Sqrt": return Math.Sqrt(Math.Max(0, N(args, 0)));
                     case "Mathf.Min": return (double)Math.Min(N(args, 0), N(args, 1)); case "Mathf.Max": return (double)Math.Max(N(args, 0), N(args, 1));
-                    case "Mathf.Clamp": return (double)Math.Clamp(N(args, 0), N(args, 1), N(args, 2));
+                    case "Mathf.Clamp": { float low = N(args, 1), high = N(args, 2); return (double)Math.Clamp(N(args, 0), Math.Min(low, high), Math.Max(low, high)); }
                     case "Mathf.Lerp": return (double)(N(args, 0) + (N(args, 1) - N(args, 0)) * N(args, 2, 0, 1));
                     case "Mathf.Floor": return Math.Floor(N(args, 0)); case "Mathf.Ceil": return Math.Ceiling(N(args, 0)); case "Mathf.Pow": return Math.Pow(N(args, 0, -1000, 1000), N(args, 1, -20, 20));
                     case "Distance": return Math.Sqrt(Math.Pow(N(args, 2) - N(args, 0), 2) + Math.Pow(N(args, 3) - N(args, 1), 2));
@@ -252,11 +265,13 @@ namespace HongBallFight
             while (events.Count > 0)
             {
                 var item = events.Dequeue();
-                if (--budget < 0) { item.state.Fail("이벤트 연쇄 호출 한도 초과"); events.Clear(); break; }
+                if (item.state.Runtime == null || !item.state.Runtime.Has(item.name)) continue;
+                if (--budget < 0) { Log("이벤트가 너무 많아 일부를 건너뛰었습니다."); events.Clear(); break; }
                 item.state.HitDamage = item.damage; item.state.HitProjectile = item.projectile; item.state.Invoke(item.name);
             }
         }
         public void UseSkill(BattleSimulation.Fighter fighter) { State(fighter).Invoke("OnSkill"); DrainEvents(); }
+        static void StepState(ScriptState state) { state.Spawns = 0; state.PixelWrites = 0; state.Invoke("Update"); state.Invoke("FixedUpdate"); }
         internal static void PlaceOrbital(Entity entity)
         {
             double angle = entity.OrbitAngle * Math.PI / 180;
@@ -265,7 +280,7 @@ namespace HongBallFight
         public void Step(float dt)
         {
             deltaTime = dt;
-            foreach (var state in new[] { Player, Cpu }) { state.Spawns = 0; state.PixelWrites = 0; state.Invoke("Update"); state.Invoke("FixedUpdate"); }
+            StepState(Player); StepState(Cpu);
             int count = Entities.Count;
             for (int i = 0; i < count; i++)
             {

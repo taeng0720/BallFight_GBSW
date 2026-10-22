@@ -27,6 +27,11 @@ namespace HongBallFight
         {
             var result = new List<CombatImpact>(impacts); impacts.Clear(); return result;
         }
+        public void DrainImpacts(List<CombatImpact> into)
+        {
+            into.Clear();
+            while (impacts.Count > 0) into.Add(impacts.Dequeue());
+        }
     }
     public sealed class ImpactFeedback
     {

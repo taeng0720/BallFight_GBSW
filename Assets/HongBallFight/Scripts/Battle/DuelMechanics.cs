@@ -52,7 +52,8 @@ namespace HongBallFight
         void UpdateArmy(Fighter owner, Fighter enemy, float dt)
         {
             if (owner.Hp <= 0 || owner.Data.skill != "army_aura") return;
-            bool waiting = RankPickups.Any(p => p.Owner == owner);
+            bool waiting = false;
+            foreach (var pickup in RankPickups) if (pickup.Owner == owner) { waiting = true; break; }
             if (!waiting && owner.Rank < RankNames.Length - 1) owner.PickupTimer -= dt;
             if (!waiting && owner.PickupTimer <= 0 && owner.Rank < RankNames.Length - 1)
             {

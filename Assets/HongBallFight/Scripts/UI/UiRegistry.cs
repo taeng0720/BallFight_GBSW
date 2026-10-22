@@ -15,6 +15,7 @@ namespace HongBallFight
         }
         public Vector2 DesignSize = new Vector2(1280, 800);
         public int LayoutVersion;
+        public bool Portrait;
         public RectTransform Root;
         public List<Entry> Entries = new List<Entry>();
         Dictionary<string, GameObject> lookup;

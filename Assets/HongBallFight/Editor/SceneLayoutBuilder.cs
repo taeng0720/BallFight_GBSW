@@ -48,7 +48,8 @@ namespace HongBallFight.Editor
                 var camera = SceneLayouts.EnsureCamera();
                 new GameObject("Hong Ball Fight").AddComponent<BallFightApp>();
                 SceneLayouts.EnsureEventSystem();
-                SceneLayouts.Build(name, camera);
+                SceneLayouts.Build(name, camera, false);
+                SceneLayouts.Build(name, camera, true).gameObject.SetActive(false);
                 EditorSceneManager.SaveScene(scene, Folder + name + ".unity");
             }
             EditorSceneManager.OpenScene(File.Exists(previous) ? previous : Folder + "MainMenu.unity");
