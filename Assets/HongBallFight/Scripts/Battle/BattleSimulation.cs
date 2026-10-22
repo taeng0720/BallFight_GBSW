@@ -44,7 +44,7 @@ namespace HongBallFight
                 VelocityY = length > .001f ? y / length * MoveSpeed : 0;
             }
         }
-        public const float Width = 900, Height = 360, Radius = 31;
+        public const float Width = 600, Height = 600, Radius = 40;
         public Fighter Player { get; }
         public Fighter Cpu { get; }
         public SkillWorld World { get; }

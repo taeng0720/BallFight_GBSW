@@ -49,12 +49,12 @@ namespace HongBallFight
         }
 
         public static string SkillName(string value) => value == "army_aura" ? "진급 오라" : value == "pasta_whip" ? "파스타 회초리" : value == "script" ? "블록 스킬" : value == "heal" ? "회복" : value == "shield" ? "보호막" : "충격파";
-        public string Summary => skill == "army_aura" ? "슬로우 · 지속 피해 · 계급 성장" : skill == "pasta_whip" ? "2초 회초리 · 넉백 · 벽 추가 피해" : SkillName(skill);
+        public string Tagline => id == "gu-bonyun" || name == "구본윤" ? "눈물젖은 그녀와의 파스타를 아십니까?" : id == "jang-heecheol" || name == "장희철" ? "땅개" : SkillName(skill);
 
         public static List<FighterData> Samples() => new List<FighterData>
         {
-            new FighterData { id = "jang-heecheol", name = "장희철", hp = 640, attack = 5, speed = 300, skill = "army_aura", skill_power = 6, cooldown = 3, color = "#728970" },
-            new FighterData { id = "gu-bonyun", name = "구본윤", hp = 560, attack = 4, speed = 330, skill = "pasta_whip", skill_power = 22, cooldown = 2, color = "#D6A653" }
+            new FighterData { id = "jang-heecheol", name = "장희철", hp = 300, attack = 5, speed = 300, skill = "army_aura", skill_power = 6, cooldown = 3, color = "#728970" },
+            new FighterData { id = "gu-bonyun", name = "구본윤", hp = 250, attack = 4, speed = 330, skill = "pasta_whip", skill_power = 22, cooldown = 2, color = "#D6A653" }
         };
     }
 

@@ -158,7 +158,7 @@ namespace HongBallFight
                 {
                     var trail = trails[f][i]; bool visible = !simulation.Ended && !fighter.Defeated && (fighter.KnockbackTime > 0 || fighter.MoveSpeed >= 280);
                     trail.gameObject.SetActive(visible); if (!visible) continue;
-                    float size = 53 - i * 9; trail.sizeDelta = new Vector2(size * sx, size * sy);
+                    float size = (53 - i * 9) * BattleSimulation.Radius / 31; trail.sizeDelta = new Vector2(size * sx, size * sy);
                     float spacing = launched ? 30 : 13;
                     trail.anchoredPosition = new Vector2((fighter.X - direction.x * (i + 1) * spacing) * sx, -(fighter.Y - direction.y * (i + 1) * spacing) * sy);
                     trail.GetComponent<Image>().color = new Color(tint.r, tint.g, tint.b, (launched ? .28f : .07f) / (i + 1));

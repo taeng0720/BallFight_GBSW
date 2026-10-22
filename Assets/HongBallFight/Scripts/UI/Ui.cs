@@ -6,20 +6,19 @@ namespace HongBallFight
 {
     public static class Ui
     {
-        public static readonly Color Background = new Color32(242, 244, 248, 255);
-        public static readonly Color Surface = Color.white;
-        public static readonly Color Soft = new Color32(235, 238, 245, 255);
-        public static readonly Color Border = new Color32(222, 226, 236, 255);
-        public static readonly Color Stage = new Color32(246, 248, 252, 255);
-        public static readonly Color TextColor = new Color32(30, 35, 48, 255);
-        public static readonly Color Muted = new Color32(120, 128, 148, 255);
-        public static readonly Color Accent = new Color32(76, 91, 240, 255);
-        public static readonly Color Danger = new Color32(226, 82, 82, 255);
+        public static readonly Color Background = Color.white;
+        public static readonly Color Soft = new Color32(243, 244, 246, 255);
+        public static readonly Color Border = new Color32(214, 217, 222, 255);
+        public static readonly Color Ink = new Color32(20, 22, 26, 255);
+        public static readonly Color TextColor = Ink;
+        public static readonly Color Muted = new Color32(118, 124, 134, 255);
+        public static readonly Color Danger = new Color32(214, 64, 64, 255);
+        public static readonly Color HpGreen = new Color32(58, 196, 74, 255);
+        public static readonly Color HpBorder = new Color32(34, 48, 36, 255);
 
         static Font font;
-        static Sprite rounded, circle;
+        static Sprite circle;
         public static Font Font => font ? font : font = Resources.Load<Font>("Fonts/NotoSansKR") ?? Font.CreateDynamicFontFromOSFont(new[] { "Malgun Gothic", "Arial" }, 24);
-        public static Sprite Rounded => rounded ? rounded : rounded = Resources.Load<Sprite>("UI/Rounded");
         public static Sprite Circle => circle ? circle : circle = Resources.Load<Sprite>("UI/Circle");
 
         public static RectTransform Box(Transform parent, string name, Rect rect, Color color)
@@ -42,13 +41,11 @@ namespace HongBallFight
             rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.pivot = new Vector2(.5f, .5f);
             rt.offsetMin = rt.offsetMax = Vector2.zero; return rt;
         }
-        public static RectTransform Card(Transform parent, string name, Rect rect, Color color, float radius = 14, bool shadow = false)
+        public static RectTransform Frame(Transform parent, string name, Rect rect, Color fill, float border = 3, Color? borderColor = null)
         {
-            var rt = Box(parent, name, rect, color);
-            var image = rt.GetComponent<Image>(); image.sprite = Rounded; image.type = Image.Type.Sliced;
-            image.pixelsPerUnitMultiplier = 24f / Mathf.Max(1, radius);
-            if (shadow) { var effect = rt.gameObject.AddComponent<Shadow>(); effect.effectColor = new Color(.1f, .12f, .25f, .08f); effect.effectDistance = new Vector2(0, -3); }
-            return rt;
+            var frame = Box(parent, name, rect, borderColor ?? Ink);
+            Box(frame, "Fill", new Rect(border, border, rect.width - border * 2, rect.height - border * 2), fill);
+            return frame;
         }
         public static Text Label(Transform parent, string value, Rect rect, int size = 18, Color? color = null, bool bold = false)
         {
@@ -58,44 +55,49 @@ namespace HongBallFight
             var text = go.AddComponent<Text>(); text.font = Font; text.text = value; text.fontSize = size; text.lineSpacing = 1.1f;
             text.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
             text.color = color ?? TextColor; text.supportRichText = false; text.raycastTarget = false;
-            text.alignment = TextAnchor.MiddleLeft; return text;
+            text.alignment = TextAnchor.MiddleLeft; text.verticalOverflow = VerticalWrapMode.Overflow; return text;
         }
         public static Text Title(Transform parent, string value, Rect rect, int size = 26) => Label(parent, value, rect, size, TextColor, true);
         public static Button Button(Transform parent, string value, Rect rect, Action action = null, bool primary = false)
         {
-            var rt = Card(parent, value, rect, primary ? Accent : Soft, Mathf.Min(10, rect.height / 2));
-            var image = rt.GetComponent<Image>(); image.raycastTarget = true;
-            var button = rt.gameObject.AddComponent<Button>(); button.targetGraphic = image; button.navigation = new Navigation { mode = Navigation.Mode.None };
-            button.colors = Tint();
-            var text = Label(rt, value, new Rect(6, 0, rect.width - 12, rect.height), rect.height < 36 ? 15 : 17, primary ? Color.white : TextColor, primary);
+            float border = rect.height <= 40 ? 2 : 3;
+            var frame = Box(parent, value, rect, Ink); frame.GetComponent<Image>().raycastTarget = true;
+            var face = Box(frame, "Face", new Rect(border, border, rect.width - border * 2, rect.height - border * 2), primary ? Ink : Color.white);
+            var button = frame.gameObject.AddComponent<Button>(); button.targetGraphic = face.GetComponent<Image>();
+            button.navigation = new Navigation { mode = Navigation.Mode.None }; button.colors = Tint();
+            int size = rect.height < 36 ? 15 : rect.height < 46 ? 17 : 19;
+            var text = Label(frame, value, new Rect(4, 0, rect.width - 8, rect.height), size, primary ? Color.white : Ink, true);
             text.name = "Label"; text.alignment = TextAnchor.MiddleCenter;
             if (action != null) button.onClick.AddListener(() => action());
             return button;
         }
         public static void SetButtonStyle(Button button, bool primary)
         {
-            button.targetGraphic.color = primary ? Accent : Soft;
-            var text = button.GetComponentInChildren<Text>(true); text.color = primary ? Color.white : TextColor; text.fontStyle = primary ? FontStyle.Bold : FontStyle.Normal;
+            button.targetGraphic.color = primary ? Ink : Color.white;
+            button.GetComponentInChildren<Text>(true).color = primary ? Color.white : Ink;
         }
         public static void SetText(Button button, string value) => button.GetComponentInChildren<Text>(true).text = value;
         public static ColorBlock Tint()
         {
             var colors = ColorBlock.defaultColorBlock;
             colors.normalColor = Color.white; colors.selectedColor = Color.white;
-            colors.highlightedColor = new Color(.92f, .93f, .97f); colors.pressedColor = new Color(.8f, .82f, .9f);
-            colors.disabledColor = new Color(1, 1, 1, .45f); colors.fadeDuration = .08f;
+            colors.highlightedColor = new Color(.9f, .9f, .9f); colors.pressedColor = new Color(.75f, .75f, .75f);
+            colors.disabledColor = new Color(1, 1, 1, .45f); colors.fadeDuration = .06f;
             return colors;
         }
-        public static InputField Input(Transform parent, string title, Rect rect, bool password = false)
+        public static InputField Input(Transform parent, string title, Rect rect, bool password = false, bool multiline = false)
         {
             var group = Group(parent, title, rect);
-            Label(group, title, new Rect(2, 0, rect.width, 22), 14, Muted).name = "Title";
-            var rt = Card(group, "Field", new Rect(0, 26, rect.width, 42), Soft, 10);
-            var image = rt.GetComponent<Image>(); image.raycastTarget = true;
-            var input = rt.gameObject.AddComponent<InputField>(); input.targetGraphic = image; input.colors = Tint();
-            var text = Label(rt, "", new Rect(14, 0, rect.width - 28, 42), 17); text.name = "Value"; input.textComponent = text;
-            input.selectionColor = new Color(Accent.r, Accent.g, Accent.b, .3f); input.caretColor = TextColor;
-            input.characterLimit = password ? 128 : 80;
+            Label(group, title, new Rect(0, 0, rect.width, 22), 14, Muted, true).name = "Title";
+            float height = multiline ? rect.height - 28 : 44;
+            var field = Box(group, "Field", new Rect(0, 28, rect.width, height), Ink); field.GetComponent<Image>().raycastTarget = true;
+            var face = Box(field, "Face", new Rect(2, 2, rect.width - 4, height - 4), Color.white);
+            var input = field.gameObject.AddComponent<InputField>(); input.targetGraphic = face.GetComponent<Image>(); input.colors = Tint();
+            var text = Label(field, "", multiline ? new Rect(14, 10, rect.width - 28, height - 20) : new Rect(14, 0, rect.width - 28, height), 17);
+            text.name = "Value"; input.textComponent = text;
+            if (multiline) { text.alignment = TextAnchor.UpperLeft; input.lineType = InputField.LineType.MultiLineNewline; }
+            input.selectionColor = new Color(.6f, .65f, .75f, .45f); input.caretColor = Ink;
+            input.characterLimit = password ? 128 : multiline ? 300 : 80;
             input.contentType = password ? InputField.ContentType.Password : InputField.ContentType.Standard;
             return input;
         }
@@ -116,7 +118,6 @@ namespace HongBallFight
         public static RectTransform Portrait(Transform parent, string name, Rect rect, Color color)
         {
             var rt = Box(parent, name, rect, color); rt.GetComponent<Image>().sprite = Circle;
-            var effect = rt.gameObject.AddComponent<Shadow>(); effect.effectColor = new Color(0, 0, 0, .14f); effect.effectDistance = new Vector2(0, -Mathf.Max(2, rect.height * .05f));
             rt.gameObject.AddComponent<Mask>().showMaskGraphic = true;
             float ring = Mathf.Max(2, rect.width * .05f);
             var face = Box(rt, "Face", new Rect(ring, ring, rect.width - ring * 2, rect.height - ring * 2), Color.white);

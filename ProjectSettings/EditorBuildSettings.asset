@@ -9,9 +9,6 @@ EditorBuildSettings:
     path: Assets/HongBallFight/Scenes/MainMenu.unity
     guid: 353715e8f7c3a8bd5493d1e9b190d05b
   - enabled: 1
-    path: Assets/HongBallFight/Scenes/CharacterCreator.unity
-    guid: 810916f891f071e258af59974a1015d6
-  - enabled: 1
     path: Assets/HongBallFight/Scenes/Arena.unity
     guid: 54e0e2bc7e682909c9d34fceaa932a12
   m_configObjects:

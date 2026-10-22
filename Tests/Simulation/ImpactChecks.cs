@@ -11,7 +11,7 @@ static class ImpactChecks
         var heavy = new ImpactFeedback(); heavy.Accept(new CombatImpact { Kind = ImpactKind.Hit, Damage = 32 });
         Assert(heavy.StopRemaining > light.StopRemaining && heavy.ShakeStrength > light.ShakeStrength, "Damage did not scale shake and hitstop");
         var whip = new ImpactFeedback(); whip.Accept(new CombatImpact { Kind = ImpactKind.Whip, Damage = 1 });
-        Assert(whip.StopRemaining >= .06f && whip.ShakeStrength > heavy.ShakeStrength, "Low-damage whip lost its strong impact");
+        Assert(whip.StopRemaining >= .11f && whip.ShakeStrength > heavy.ShakeStrength, "Low-damage whip lost its strong impact");
         var ricochet = new ImpactFeedback(); ricochet.Accept(new CombatImpact { Kind = ImpactKind.Ricochet });
         Assert(ricochet.StopRemaining < whip.StopRemaining && ricochet.ShakeStrength < whip.ShakeStrength, "Ricochet feedback overwhelmed the initial whip");
         var dot = new ImpactFeedback(); dot.Accept(new CombatImpact { Kind = ImpactKind.Dot, Damage = 32 });
@@ -31,7 +31,7 @@ static class ImpactChecks
         var shielded = new BattleSimulation(new FighterData(), new FighterData()); shielded.Cpu.Shield = 50; shielded.DealDamage(shielded.Cpu, 10);
         var blocked = shielded.DrainImpacts().Single(); Assert(blocked.Kind == ImpactKind.Shield && blocked.Damage == 0 && blocked.Absorbed == 10, "Shield feedback reported HP damage");
         var timeout = new BattleSimulation(new FighterData { hp = 1000, cooldown = 20 }, new FighterData { hp = 1000, cooldown = 20 });
-        timeout.Player.X = 100; timeout.Cpu.X = 700; timeout.Player.VelocityX = timeout.Player.VelocityY = timeout.Cpu.VelocityX = timeout.Cpu.VelocityY = 0;
+        timeout.Player.X = 100; timeout.Cpu.X = 500; timeout.Player.VelocityX = timeout.Player.VelocityY = timeout.Cpu.VelocityX = timeout.Cpu.VelocityY = 0;
         timeout.Cpu.Hp = 900;
         for (int i = 0; i < 120 * 181 && !timeout.Ended; i++) timeout.Tick(1f / 120);
         Assert(timeout.Cpu.Defeated && timeout.Cpu.Hp > 0 && !timeout.Player.Defeated, "Timeout loser did not receive a burst event");

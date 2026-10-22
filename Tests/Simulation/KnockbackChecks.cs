@@ -9,11 +9,11 @@ static class KnockbackChecks
     public static void Check()
     {
         var game = new BattleSimulation(FighterData.Samples()[1], new FighterData { hp = 1000, cooldown = 20 }, true);
-        game.Player.X = 480; game.Player.Y = game.Cpu.Y;
+        game.Player.X = 300; game.Player.Y = game.Cpu.Y;
         game.Player.VelocityX = game.Player.VelocityY = 0; game.Player.Cooldown = 0;
         game.UseSkill(1);
         for (int i = 0; i < 36 && !game.Player.WhipHit; i++) game.Tick(1f / 120);
-        Assert(game.Player.WhipHit && game.Cpu.Hp == 978 && game.Cpu.KnockbackX == 2600, "Sandbox dummy was not launched at full speed");
+        Assert(game.Player.WhipHit && game.Cpu.Hp == 978 && game.Cpu.KnockbackX == BattleSimulation.WhipKnockback, "Sandbox dummy was not launched at full speed");
         float x = game.Cpu.X; Step(game, .025f);
         Assert(game.Cpu.X - x > 60, "Sandbox position reset suppressed knockback");
         for (int i = 0; i < 60 && game.Cpu.WallSlamArmed; i++) game.Tick(1f / 120);
@@ -35,12 +35,12 @@ static class KnockbackChecks
         Assert(game.Cpu.SlowFactor == .55f && Math.Abs(game.Cpu.X - (400 + 2600f / 120)) < .001f, "Aura or opposing movement weakened launch speed");
 
         game = new BattleSimulation(FighterData.Samples()[1], new FighterData { hp = 1000, cooldown = 20 }, true);
-        game.Player.X = 480; game.Player.Y = game.Cpu.Y; game.Player.VelocityX = game.Player.VelocityY = 0;
+        game.Player.X = 300; game.Player.Y = game.Cpu.Y; game.Player.VelocityX = game.Player.VelocityY = 0;
         game.Cpu.Shield = 100; game.Player.Cooldown = 0; game.UseSkill(1);
         for (int i = 0; i < 36 && !game.Player.WhipHit; i++) game.Tick(1f / 120);
-        Assert(game.Cpu.Hp == 1000 && game.Cpu.KnockbackX == 2600 && game.DrainImpacts().Any(e => e.Kind == ImpactKind.Whip && e.Absorbed == 22), "Shield erased whip impact or launch");
+        Assert(game.Cpu.Hp == 1000 && game.Cpu.KnockbackX == BattleSimulation.WhipKnockback && game.DrainImpacts().Any(e => e.Kind == ImpactKind.Whip && e.Absorbed == 22), "Shield erased whip impact or launch");
         game = new BattleSimulation(FighterData.Samples()[0], new FighterData { hp = 1000, cooldown = 20 });
-        game.Player.X = 800; game.Player.Y = 300; game.Player.VelocityX = game.Player.VelocityY = 0;
+        game.Player.X = 100; game.Player.Y = 500; game.Player.VelocityX = game.Player.VelocityY = 0;
         game.Cpu.X = 300; game.Cpu.Y = 180; game.Cpu.SetVelocity(-1, 0);
         game.Cpu.KnockbackX = 600; game.Cpu.KnockbackY = 0; game.Cpu.KnockbackTime = .1f;
         Step(game, .2f);

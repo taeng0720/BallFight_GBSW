@@ -14,6 +14,8 @@ namespace HongBallFight
         readonly RectTransform player, cpu;
         readonly Image playerFace, cpuFace;
         readonly Text playerLabel, cpuLabel;
+        readonly RectTransform playerAim, cpuAim;
+        public bool ShowAim;
         readonly Dictionary<int, RectTransform> entities = new Dictionary<int, RectTransform>();
         readonly float sx, sy;
         readonly DuelVisuals duelVisuals;
@@ -28,6 +30,7 @@ namespace HongBallFight
             content = Ui.Group(stage, "Runtime", new Rect(0, 0, size.x, size.y));
             duelVisuals = new DuelVisuals(content, simulation, sx, sy);
             playerBank = new SpriteBank(simulation.Player.Data); cpuBank = new SpriteBank(simulation.Cpu.Data);
+            playerAim = Aim("1번 방향"); cpuAim = Aim("2번 방향");
             player = Fighter("1번", simulation.Player, "1", out playerFace, out playerLabel);
             cpu = Fighter("2번", simulation.Cpu, simulation.Sandbox ? "샌드백" : "2", out cpuFace, out cpuLabel);
             if (simulation.Sandbox) { cpuLabel.fontSize = 13; cpuLabel.color = Ui.TextColor; }
@@ -36,13 +39,30 @@ namespace HongBallFight
         }
         RectTransform Fighter(string name, BattleSimulation.Fighter fighter, string number, out Image face, out Text label)
         {
-            var ball = Ui.Portrait(content, name, new Rect(0, 0, 62 * sx, 62 * sy), Ui.ParseColor(fighter.Data.color));
+            float diameter = BattleSimulation.Radius * 2;
+            var ball = Ui.Portrait(content, name, new Rect(0, 0, diameter * sx, diameter * sy), Ui.ParseColor(fighter.Data.color));
             ball.pivot = Vector2.one * .5f;
             face = Ui.Child<Image>(ball, "Face"); face.sprite = FighterPortraits.Face(fighter.Data.name);
             label = Ui.Child<Text>(ball, "Number"); label.text = number;
             label.fontSize = Mathf.Max(12, Mathf.RoundToInt(23 * sx));
             label.rectTransform.sizeDelta += new Vector2(40, 0); label.rectTransform.anchoredPosition -= new Vector2(20, 0);
             return ball;
+        }
+        RectTransform Aim(string name)
+        {
+            var line = Ui.Box(content, name, new Rect(0, 0, 44 * sx, 3), Ui.Ink);
+            line.pivot = new Vector2(0, .5f); return line;
+        }
+        void RenderAim(RectTransform aim, BattleSimulation.Fighter fighter)
+        {
+            var direction = new Vector2(fighter.VelocityX, -fighter.VelocityY);
+            bool visible = ShowAim && !fighter.Defeated && direction.sqrMagnitude > .01f;
+            aim.gameObject.SetActive(visible);
+            if (!visible) return;
+            direction.Normalize();
+            var center = new Vector2(fighter.X * sx, -fighter.Y * sy);
+            aim.anchoredPosition = center + new Vector2(direction.x * sx, direction.y * sy) * BattleSimulation.Radius;
+            aim.localRotation = Quaternion.Euler(0, 0, Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg);
         }
         void RenderFighter(RectTransform visual, Image face, Text label, BattleSimulation.Fighter fighter, SpriteBank bank)
         {
@@ -68,6 +88,7 @@ namespace HongBallFight
             content.anchoredPosition = new Vector2(effects.Feedback.OffsetX, -effects.Feedback.OffsetY);
             duelVisuals.Render();
             RenderFighter(player, playerFace, playerLabel, simulation.Player, playerBank); RenderFighter(cpu, cpuFace, cpuLabel, simulation.Cpu, cpuBank);
+            RenderAim(playerAim, simulation.Player); RenderAim(cpuAim, simulation.Cpu);
             var active = new HashSet<int>();
             foreach (var entity in simulation.World.Entities)
             {

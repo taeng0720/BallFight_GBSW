@@ -78,7 +78,7 @@ namespace HongBallFight
                 }
                 view.Status.text = (fighter.Data.skill == "army_aura" ? fighter.RankName : "") + (fighter.SlowFactor < 1 ? " 느려짐" : "");
                 view.Status.gameObject.SetActive(!fighter.Defeated);
-                view.Status.rectTransform.anchoredPosition = new Vector2((fighter.X - 80) * sx, -(fighter.Y + 39) * sy);
+                view.Status.rectTransform.anchoredPosition = new Vector2((fighter.X - 80) * sx, -(fighter.Y + BattleSimulation.Radius + 8) * sy);
                 if (view.Noodles == null) continue;
                 for (int i = 0; i < view.Noodles.Length; i++)
                 {

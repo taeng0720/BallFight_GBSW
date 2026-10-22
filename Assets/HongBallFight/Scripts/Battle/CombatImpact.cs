@@ -45,7 +45,7 @@ namespace HongBallFight
             if (impact.Kind == ImpactKind.Dot) { shake *= .18f; stop *= .16f; duration = .07f; }
             if (impact.Kind == ImpactKind.Shield) { shake *= .45f; stop *= .4f; }
             if (impact.Kind == ImpactKind.Wall) { shake = Math.Min(5, shake * 1.2f); stop *= 1.15f; }
-            if (impact.Kind == ImpactKind.Whip) { shake = Math.Max(4.2f, shake); stop = Math.Max(.06f, stop); duration = .23f; }
+            if (impact.Kind == ImpactKind.Whip) { shake = Math.Max(5f, shake); stop = Math.Max(.11f, stop); duration = .26f; }
             if (impact.Kind == ImpactKind.Ricochet) { shake = 1.4f; stop = .018f; duration = .10f; }
             if (impact.Kind == ImpactKind.Defeat) { shake = 5; stop = .085f; duration = .28f; }
             StopRemaining = Math.Max(StopRemaining, stop);

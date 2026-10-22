@@ -7,7 +7,7 @@ namespace HongBallFight
     public sealed partial class BattleSimulation
     {
         public const float AuraRadius = 155, AuraSlowFactor = .55f, AuraInterval = .5f;
-        public const float WhipReach = 190, WhipDuration = .30f, WhipKnockback = 2600;
+        public const float WhipReach = 190, WhipDuration = .16f, WhipKnockback = 3600;
         public const int WhipStrands = 2, WhipSegments = 8;
         public const float PickupWidth = 64, PickupHeight = 80, PickupRadius = 35;
         public static readonly string[] RankNames = { "하사", "중사", "상사", "원사", "준위", "소위", "중위", "대위", "소령", "중령", "대령", "준장", "소장", "중장", "대장" };

@@ -11,15 +11,19 @@ namespace HongBallFight.Editor
         [MenuItem("Hong Ball Fight/Build WebGL")]
         public static void WebGL()
         {
+            SceneLayoutBuilder.EnsureCurrent();
             PlayerSettings.companyName = "HongBallFight";
             PlayerSettings.productName = "Hong Ball Fight";
             PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
+            PlayerSettings.SplashScreen.show = false;
+            PlayerSettings.SplashScreen.showUnityLogo = false;
+            PlayerSettings.WebGL.template = "PROJECT:BallFight";
             PlayerSettings.WebGL.decompressionFallback = false;
             PlayerSettings.defaultWebScreenWidth = 1280;
             PlayerSettings.defaultWebScreenHeight = 800;
             var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {
-                scenes = new[] { "Assets/HongBallFight/Scenes/MainMenu.unity", "Assets/HongBallFight/Scenes/CharacterCreator.unity", "Assets/HongBallFight/Scenes/Arena.unity" },
+                scenes = new[] { "Assets/HongBallFight/Scenes/MainMenu.unity", "Assets/HongBallFight/Scenes/Arena.unity" },
                 locationPathName = "Builds/WebGL", target = BuildTarget.WebGL,
                 options = BuildOptions.None
             });
