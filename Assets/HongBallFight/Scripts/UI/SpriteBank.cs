@@ -41,7 +41,7 @@ namespace HongBallFight
                 if (entry.Revision != image.Revision) { entry.Texture.LoadRawTextureData(image.Pixels); entry.Texture.Apply(); entry.Revision = image.Revision; }
             }
             if (entry != null) return entry.Sprite;
-            if (key != "star" && key != "missile") return BallFightApp.Circle;
+            if (key != "star" && key != "missile") return Ui.Circle;
             var texture = new Texture2D(64, 64, TextureFormat.RGBA32, false);
             var colors = new Color[4096];
             for (int y = 0; y < 64; y++) for (int x = 0; x < 64; x++)

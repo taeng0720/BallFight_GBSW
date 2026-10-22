@@ -15,15 +15,14 @@ namespace HongBallFight
     public sealed class BlockDrag : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
     {
         public Func<BlockDragData> Data;
-        public BallFightApp App;
         public RectTransform Overlay;
         public static BlockDragData Active;
         static RectTransform ghost;
         public void OnBeginDrag(PointerEventData eventData)
         {
             Cancel(); Active = Data();
-            ghost = App.Box(Overlay, "Dragging block", new Rect(0, 0, 250, 42), new Color32(77, 132, 220, 220));
-            App.Label(ghost, Active.Title, new Rect(10, 0, 230, 42), 16);
+            ghost = Ui.Card(Overlay, "Dragging block", new Rect(0, 0, 250, 42), new Color(Ui.Accent.r, Ui.Accent.g, Ui.Accent.b, .92f), 10, true);
+            Ui.Label(ghost, Active.Title, new Rect(12, 0, 226, 42), 16, Color.white, true);
             OnDrag(eventData);
         }
         public void OnDrag(PointerEventData eventData)

@@ -152,7 +152,11 @@ namespace HongBallFight
             fighter.KnockbackTime = Math.Max(0, fighter.KnockbackTime - dt);
             float friction = (float)Math.Exp(-1.6f * dt);
             fighter.KnockbackX *= friction; fighter.KnockbackY *= friction;
-            if (fighter.KnockbackTime <= 0) { fighter.WallSlamArmed = false; fighter.KnockbackX = fighter.KnockbackY = 0; }
+            if (fighter.KnockbackTime <= 0)
+            {
+                if (launched && (fighter.KnockbackX != 0 || fighter.KnockbackY != 0)) fighter.SetVelocity(fighter.KnockbackX, fighter.KnockbackY);
+                fighter.WallSlamArmed = false; fighter.KnockbackX = fighter.KnockbackY = 0;
+            }
         }
         void ClampPosition(Fighter fighter)
         {

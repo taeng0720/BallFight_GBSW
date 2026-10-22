@@ -25,7 +25,6 @@ namespace HongBallFight
             public float Age, Lifetime, Size;
             public readonly List<Particle> Particles = new List<Particle>();
         }
-        readonly BallFightApp app;
         readonly BattleSimulation simulation;
         readonly RectTransform layer;
         readonly float sx, sy;
@@ -50,17 +49,17 @@ namespace HongBallFight
                 texture.SetPixels(colors); texture.Apply(); ring = Sprite.Create(texture, new Rect(0, 0, 128, 128), Vector2.one * .5f); return ring;
             }
         }
-        public ImpactEffects(BallFightApp app, RectTransform parent, BattleSimulation simulation, float sx, float sy)
+        public ImpactEffects(RectTransform parent, BattleSimulation simulation, float sx, float sy)
         {
-            this.app = app; this.simulation = simulation; this.sx = sx; this.sy = sy;
-            layer = app.Box(parent, "타격 효과", new Rect(0, 0, BattleSimulation.Width * sx, BattleSimulation.Height * sy), Color.clear);
+            this.simulation = simulation; this.sx = sx; this.sy = sy;
+            layer = Ui.Box(parent, "타격 효과", new Rect(0, 0, BattleSimulation.Width * sx, BattleSimulation.Height * sy), Color.clear);
             audio = layer.gameObject.AddComponent<ImpactAudio>();
             for (int f = 0; f < 2; f++)
             {
                 trails[f] = new RectTransform[3];
                 for (int i = 0; i < 3; i++)
                 {
-                    var trail = app.Box(parent, "이동 잔상", new Rect(0, 0, 1, 1), Color.clear); trail.GetComponent<Image>().sprite = BallFightApp.Circle;
+                    var trail = Ui.Box(parent, "이동 잔상", new Rect(0, 0, 1, 1), Color.clear); trail.GetComponent<Image>().sprite = Ui.Circle;
                     trail.pivot = Vector2.one * .5f; trail.SetAsFirstSibling(); trails[f][i] = trail;
                 }
             }
@@ -87,7 +86,7 @@ namespace HongBallFight
         }
         RectTransform Circle(Transform parent, string name, float size, Sprite sprite, Color color)
         {
-            var rect = app.Box(parent, name, new Rect(0, 0, size * sx, size * sy), color);
+            var rect = Ui.Box(parent, name, new Rect(0, 0, size * sx, size * sy), color);
             rect.pivot = Vector2.one * .5f; rect.GetComponent<Image>().sprite = sprite; return rect;
         }
         void AddBurst(CombatImpact impact)
@@ -99,24 +98,24 @@ namespace HongBallFight
             if (promotion) tint = new Color32(192, 158, 72, 255);
             var burst = new Burst
             {
-                Root = app.Box(layer, defeat ? "패배 폭발" : "타격 섬광", new Rect(impact.X * sx, impact.Y * sy, 1, 1), Color.clear),
+                Root = Ui.Box(layer, defeat ? "패배 폭발" : "타격 섬광", new Rect(impact.X * sx, impact.Y * sy, 1, 1), Color.clear),
                 Lifetime = defeat ? .7f : promotion ? .5f : dot ? .2f : .34f,
                 Size = defeat ? 160 : whip ? 130 : promotion ? 100 : dot ? 36 : 60 + Mathf.Min(40, impact.Damage), Color = tint
             };
             burst.Ring = Circle(burst.Root, "충격파", 36, Ring, tint); burst.RingImage = burst.Ring.GetComponent<Image>();
-            burst.Flash = Circle(burst.Root, "빛", defeat ? 100 : whip ? 80 : dot ? 20 : 50, BallFightApp.Circle, Color.white); burst.FlashImage = burst.Flash.GetComponent<Image>();
+            burst.Flash = Circle(burst.Root, "빛", defeat ? 100 : whip ? 80 : dot ? 20 : 50, Ui.Circle, Color.white); burst.FlashImage = burst.Flash.GetComponent<Image>();
             int count = defeat ? 24 : whip ? 12 : dot ? 3 : promotion ? 10 : 7;
             var random = new System.Random(++serial * 103);
             for (int i = 0; i < count; i++)
             {
                 float angle = (float)(i * Math.PI * 2 / count + random.NextDouble() * .4), speed = (defeat ? 150 : whip ? 180 : dot ? 40 : 95) + (float)random.NextDouble() * (defeat ? 230 : whip ? 150 : 90);
-                var rect = app.Box(burst.Root, "파편", new Rect(0, 0, (defeat ? 7 : 3) * sx, (defeat ? 11 : 12) * sy), tint);
+                var rect = Ui.Box(burst.Root, "파편", new Rect(0, 0, (defeat ? 7 : 3) * sx, (defeat ? 11 : 12) * sy), tint);
                 rect.pivot = Vector2.one * .5f; rect.localRotation = Quaternion.Euler(0, 0, angle * Mathf.Rad2Deg - 90);
                 burst.Particles.Add(new Particle { Rect = rect, Image = rect.GetComponent<Image>(), Velocity = new Vector2(Mathf.Cos(angle) * speed * sx, Mathf.Sin(angle) * speed * sy), Color = i % 3 == 0 ? new Color(1, .83f, .4f) : tint, Spin = (float)random.NextDouble() * 600 - 300, Angle = angle * Mathf.Rad2Deg - 90 });
             }
             if (impact.Damage >= 10 || promotion)
             {
-                burst.Label = app.Label(burst.Root, promotion ? fighter.RankName : "−" + impact.Damage.ToString("0.#"), new Rect(-80 * sx, -62 * sy, 160 * sx, 36 * sy), Mathf.Max(12, Mathf.RoundToInt(20 * sx)), promotion ? tint : BallFightApp.TextColor);
+                burst.Label = Ui.Label(burst.Root, promotion ? fighter.RankName : "−" + impact.Damage.ToString("0.#"), new Rect(-80 * sx, -62 * sy, 160 * sx, 36 * sy), Mathf.Max(12, Mathf.RoundToInt(20 * sx)), promotion ? tint : Ui.TextColor);
                 burst.Label.alignment = TextAnchor.MiddleCenter;
             }
             bursts.Add(burst);

@@ -39,6 +39,12 @@ static class KnockbackChecks
         game.Cpu.Shield = 100; game.Player.Cooldown = 0; game.UseSkill(1);
         for (int i = 0; i < 36 && !game.Player.WhipHit; i++) game.Tick(1f / 120);
         Assert(game.Cpu.Hp == 1000 && game.Cpu.KnockbackX == 2600 && game.DrainImpacts().Any(e => e.Kind == ImpactKind.Whip && e.Absorbed == 22), "Shield erased whip impact or launch");
-        Console.WriteLine("PASS: high-speed dummy launch, sustained wall rebound, one-time slam, dummy lock toggle, aura-independent flight and shielded whip feedback");
+        game = new BattleSimulation(FighterData.Samples()[0], new FighterData { hp = 1000, cooldown = 20 });
+        game.Player.X = 800; game.Player.Y = 300; game.Player.VelocityX = game.Player.VelocityY = 0;
+        game.Cpu.X = 300; game.Cpu.Y = 180; game.Cpu.SetVelocity(-1, 0);
+        game.Cpu.KnockbackX = 600; game.Cpu.KnockbackY = 0; game.Cpu.KnockbackTime = .1f;
+        Step(game, .2f);
+        Assert(game.Cpu.KnockbackTime == 0 && game.Cpu.VelocityX > 0 && Math.Abs(game.Cpu.VelocityY) < .001f, "Fighter returned to its old direction after knockback");
+        Console.WriteLine("PASS: high-speed dummy launch, sustained wall rebound, one-time slam, dummy lock toggle, aura-independent flight, shielded whip feedback and keep-launch-direction");
     }
 }

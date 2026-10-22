@@ -14,7 +14,6 @@ namespace HongBallFight
             public Text Status;
             public RectTransform[] Noodles;
         }
-        readonly BallFightApp app;
         readonly RectTransform parent;
         readonly BattleSimulation simulation;
         readonly float sx, sy;
@@ -36,24 +35,24 @@ namespace HongBallFight
                 texture.SetPixels(colors); texture.Apply(); aura = Sprite.Create(texture, new Rect(0, 0, 256, 256), Vector2.one * .5f); return aura;
             }
         }
-        public DuelVisuals(BallFightApp app, RectTransform parent, BattleSimulation simulation, float sx, float sy)
+        public DuelVisuals(RectTransform parent, BattleSimulation simulation, float sx, float sy)
         {
-            this.app = app; this.parent = parent; this.simulation = simulation; this.sx = sx; this.sy = sy;
+            this.parent = parent; this.simulation = simulation; this.sx = sx; this.sy = sy;
             foreach (var fighter in new[] { simulation.Player, simulation.Cpu })
             {
                 var view = new FighterView(); fighters[fighter] = view;
                 if (fighter.Data.skill == "army_aura")
                 {
-                    view.Aura = app.Box(parent, "진급 오라", new Rect(0, 0, BattleSimulation.AuraRadius * 2 * sx, BattleSimulation.AuraRadius * 2 * sy), new Color32(107, 138, 101, 255));
+                    view.Aura = Ui.Box(parent, "진급 오라", new Rect(0, 0, BattleSimulation.AuraRadius * 2 * sx, BattleSimulation.AuraRadius * 2 * sy), new Color32(107, 138, 101, 255));
                     view.Aura.GetComponent<Image>().sprite = AuraSprite;
                 }
-                view.Status = app.Label(parent, "", new Rect(0, 0, 160 * sx, 26 * sy), Math.Max(10, Mathf.RoundToInt(14 * sx)), BallFightApp.Muted); view.Status.alignment = TextAnchor.MiddleCenter;
+                view.Status = Ui.Label(parent, "", new Rect(0, 0, 160 * sx, 26 * sy), Math.Max(10, Mathf.RoundToInt(14 * sx)), Ui.Muted); view.Status.alignment = TextAnchor.MiddleCenter;
                 if (fighter.Data.skill == "pasta_whip")
                 {
                     view.Noodles = new RectTransform[BattleSimulation.WhipStrands * BattleSimulation.WhipSegments];
                     for (int i = 0; i < view.Noodles.Length; i++)
                     {
-                        var line = app.Box(parent, "파스타 면", new Rect(0, 0, 1, 3.5f * sy), i / BattleSimulation.WhipSegments % 2 == 0 ? new Color32(207, 163, 70, 255) : new Color32(231, 195, 108, 255));
+                        var line = Ui.Box(parent, "파스타 면", new Rect(0, 0, 1, 3.5f * sy), i / BattleSimulation.WhipSegments % 2 == 0 ? new Color32(207, 163, 70, 255) : new Color32(231, 195, 108, 255));
                         line.pivot = new Vector2(0, .5f); view.Noodles[i] = line;
                     }
                 }
@@ -98,21 +97,21 @@ namespace HongBallFight
                 if (!pickups.TryGetValue(pickup.Id, out var visual))
                 {
                     float w = BattleSimulation.PickupWidth, h = BattleSimulation.PickupHeight;
-                    visual = app.Box(parent, "진급 계급장", new Rect(0, 0, w * sx, h * sy), new Color32(235, 240, 232, 255));
-                    app.Box(visual, "계급장 테두리", new Rect(0, 0, w * sx, 3 * sy), new Color32(111, 135, 100, 255));
-                    app.Box(visual, "계급장 아래", new Rect(0, (h - 3) * sy, w * sx, 3 * sy), new Color32(111, 135, 100, 255));
+                    visual = Ui.Box(parent, "진급 계급장", new Rect(0, 0, w * sx, h * sy), new Color32(235, 240, 232, 255));
+                    Ui.Box(visual, "계급장 테두리", new Rect(0, 0, w * sx, 3 * sy), new Color32(111, 135, 100, 255));
+                    Ui.Box(visual, "계급장 아래", new Rect(0, (h - 3) * sy, w * sx, 3 * sy), new Color32(111, 135, 100, 255));
                     var ink = pickup.Rank < 5 ? new Color32(95, 120, 84, 255) : new Color32(173, 139, 61, 255);
                     for (int stripe = 0; stripe < pickup.StripeCount; stripe++)
                     {
                         float lineY = 10 + stripe * 8;
-                        app.Box(visual, "계급 줄 " + (stripe + 1), new Rect(12 * sx, lineY * sy, 40 * sx, 5 * sy), ink);
+                        Ui.Box(visual, "계급 줄 " + (stripe + 1), new Rect(12 * sx, lineY * sy, 40 * sx, 5 * sy), ink);
                     }
                     if (pickup.Rank >= 4)
                     {
-                        var symbol = app.Label(visual, pickup.Rank >= 11 ? "★" : pickup.Rank >= 8 ? "◆" : "◇", new Rect(8 * sx, 41 * sy, 48 * sx, 17 * sy), Math.Max(11, Mathf.RoundToInt(16 * sx)), ink);
+                        var symbol = Ui.Label(visual, pickup.Rank >= 11 ? "★" : pickup.Rank >= 8 ? "◆" : "◇", new Rect(8 * sx, 41 * sy, 48 * sx, 17 * sy), Math.Max(11, Mathf.RoundToInt(16 * sx)), ink);
                         symbol.alignment = TextAnchor.MiddleCenter;
                     }
-                    var title = app.Label(visual, pickup.RankName, new Rect(0, 60 * sy, w * sx, 18 * sy), Math.Max(10, Mathf.RoundToInt(14 * sx)), ink); title.alignment = TextAnchor.MiddleCenter;
+                    var title = Ui.Label(visual, pickup.RankName, new Rect(0, 60 * sy, w * sx, 18 * sy), Math.Max(10, Mathf.RoundToInt(14 * sx)), ink); title.alignment = TextAnchor.MiddleCenter;
                     pickups[pickup.Id] = visual;
                 }
                 visual.anchoredPosition = new Vector2((pickup.X - BattleSimulation.PickupWidth / 2) * sx, -(pickup.Y - BattleSimulation.PickupHeight / 2) * sy);
